@@ -5,7 +5,7 @@
 
 ## Usage
 
-To use it, just mention the bot [@dyalogaplbot][https://twitter.com/dyalogaplbot] in your tweets,
+To use it, just mention the bot [@dyalogaplbot][dyalogaplbot] in your tweets,
 and include APL code between backticks (`` ` ``).
 The bot replies with the result and a direct link to [Try APL][tryapl] with your expression in there.
 
