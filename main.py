@@ -1,27 +1,49 @@
-import itertools, time, urllib.parse
+import itertools, logging, os, sys, time, urllib.parse
 import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import requests, tweepy
-import env
 
-auth = tweepy.OAuthHandler(env.CONSUMER_KEY, env.CONSUMER_SECRET)
-auth.set_access_token(env.ACCESS_TOKEN, env.ACCESS_TOKEN_SECRET)
-api = tweepy.API(auth)
-
-self_name = api.me().screen_name
+try:
+    import env
+except ImportError:
+    pass
+CONSUMER_KEY = os.environ.get("BOT_CONSUMER_KEY")
+CONSUMER_SECRET = os.environ.get("BOT_CONSUMER_SECRET")
+ACCESS_TOKEN = os.environ.get("BOT_ACCESS_TOKEN")
+ACCESS_TOKEN_SECRET = os.environ.get("BOT_ACCESS_TOKEN_SECRET")
 
 TRYAPL_ENDPOINT = "https://tryapl.org/Exec"
 REPLY_TEMPLATE = "Run it online: {}\n\n{}"
 RUN_ENDPOINT = "https://tryapl.org/?q={}&run"
 
-def load_most_recent_processed():
+WAIT_BETWEEN_REQUESTS = 12
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
+if None in [CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET]:
+    logger.error("Could not load API keys -- exiting.")
+    sys.exit()
+
+auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+api = tweepy.API(auth)
+
+def load_most_recent_processed(backoff=0.1):
     """Fetch the id of the most recently processed tweet upon bot start."""
 
     try:
-        with open("most_recent_processed", "r") as f:
-            mrp = f.read().strip()
-    except FileNotFoundError:
-        mrp = None
-    return mrp
+        return api.user_timeline(count=1)[0].id
+    except tweepy.error.TweepError:
+        logger.exception(
+            "Failed to load most recent processed."
+            f"Backing off for {backoff}s and retrying."
+        )
+        time.sleep(backoff)
+        return load_most_recent_processed(backoff*2)
 
 def save_most_recent_processed(mrp):
     """Ensure the id of the most recently processed tweet persists."""
@@ -150,27 +172,31 @@ def generate_image(result_lines):
     return image
 
 most_recent_processed = load_most_recent_processed()
-called = time.time() - 12
+self_name = api.me().screen_name
+called = time.time() - WAIT_BETWEEN_REQUESTS
 
 while True:
     # I can request the mentions 75×/15 min, which gives around once every 12 seconds.
     # Sleep 12 seconds between requests, but discount any time I may have spent
     # processing previous tweets.
     time.sleep(
-        max(0, min(12, 12 - (time.time() - called) + 0.01))
+        max(0, WAIT_BETWEEN_REQUESTS - (time.time() - called) + 0.01)
     )
     try:
         to_process = api.mentions_timeline(most_recent_processed, tweet_mode="extended")[::-1]
     except tweepy.error.RateLimitError:
-        print("Skipping.")
+        logger.warning("Rate limit reached; waiting.")
+        continue
+    except tweepy.error.TweepError:
+        logger.exception("Failed to load bot mentions.")
         continue
     called = time.time()
 
-    print(f"Processing {len(to_process)} tweet(s).")
+    logger.debug(f"Processing {len(to_process)} tweet(s).")
 
     for tweet in to_process:
         if skip_tweet(tweet):
-            print("Skipping potential infinite recursion.")
+            logger.info(f"Skipping potential infinite recursion from tweet {tweet.id}.")
             most_recent_processed = tweet.id
             save_most_recent_processed(most_recent_processed)
             continue
