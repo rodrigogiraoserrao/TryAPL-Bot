@@ -9,8 +9,9 @@ api = tweepy.API(auth)
 
 self_name = api.me().screen_name
 
-tryapl_endpoint = "https://tryapl.org/Exec"
-run_endpoint = "Run it online: https://tryapl.org/?q={}&run"
+TRYAPL_ENDPOINT = "https://tryapl.org/Exec"
+REPLY_TEMPLATE = "Run it online: {}\n\n{}"
+RUN_ENDPOINT = "https://tryapl.org/?q={}&run"
 
 def load_most_recent_processed():
     """Fetch the id of the most recently processed tweet upon bot start."""
@@ -59,9 +60,24 @@ def parse_tweet(s):
         i += 1
     return matches
 
+def skip_tweet(tweet):
+    """Check if this tweet should not be evaluated, to prevent recursion.
+
+    This prevents users from evaluating expressions that evaluate to
+    single-line results that would call the bot again, as that might
+    create infinite recursion.
+    Only exceptions are the bot's own original tweets.
+    """
+
+    return (
+        tweet.user.screen_name == self_name and
+        (rep_to := tweet.in_reply_to_screen_name) and
+        rep_to != self_name
+    )
+
 # cf. https://github.com/twitter/twitter-text/tree/master/config
 # to check what is the weight of each character in a Tweet.
-single_char_ranges = [
+SINGLE_CHAR_RANGES = [
     range(   0, 4351 + 1),
     range(8192, 8205 + 1),
     range(8208, 8223 + 1),
@@ -72,7 +88,7 @@ def char_weight(char):
 
     Uses information from `twitter-text` to know the weight of each char.
     """
-    if any(ord(char) in r for r in single_char_ranges):
+    if any(ord(char) in r for r in SINGLE_CHAR_RANGES):
         return 1
     else:
         return 2
@@ -94,9 +110,8 @@ def produce_code_result(result_lines):
     weights = [char_weight(char) for char in code_result]
     acc = itertools.accumulate(weights)
     # According to https://help.twitter.com/en/using-twitter/how-to-tweet-a-link,
-    # URLs take up 23 characters; we also need 2 more for the two newlines;
-    # subtract 15 from the Twitter text; and we subtract a final 1 just for good measure.
-    max_weight = 280 - 23 - 2 - 15 - 1
+    # URLs take up 23 characters and subtract the length of the reply template.
+    max_weight = 280 - 23 - len(REPLY_TEMPLATE)
     trimmed = ""
     for char, weight in zip(code_result, acc):
         if weight > max_weight:
@@ -154,13 +169,13 @@ while True:
     print(f"Processing {len(to_process)} tweet(s).")
 
     for tweet in to_process:
-        # Ignore own tweets that were replies to someone.
-        if tweet.user.screen_name == self_name and (rep_to := tweet.in_reply_to_screen_name) and rep_to != self_name:
-            print("Skipping recursion.")
+        if skip_tweet(tweet):
+            print("Skipping potential infinite recursion.")
             most_recent_processed = tweet.id
             save_most_recent_processed(most_recent_processed)
             continue
 
+        # Look for the code expressions to be ran.
         code_matches = parse_tweet(tweet.full_text)
         if not code_matches:
             api.update_status(
@@ -171,24 +186,32 @@ while True:
             most_recent_processed = tweet.id
             save_most_recent_processed(most_recent_processed)
             continue
+
+        # Build the mock interpreter session from the parsed code.
         session_lines = []
         result_lines = []
         ws_state, ws_id, ws_hash = "", 0, ""
         for match in code_matches:
+            ws_state, ws_id, ws_hash, res = requests.post(
+                TRYAPL_ENDPOINT,
+                json=[ws_state, ws_id, ws_hash, match],
+            ).json()
             session_lines.append(" "*6 + match)
-            resp = requests.post(tryapl_endpoint, json=[ws_state, ws_id, ws_hash, match]).json()
-            ws_state, ws_id, ws_hash, res = resp
             session_lines.extend(res)
             result_lines.extend(res)
-        #reply = "\n".join(res).translate(str.maketrans("┐┬┌├┼┤└┴┘─│", "+++++++++-|"))
+
+        # Build the text reply.
         code = " ⋄ ".join(code_matches)
-        tryapl_link = run_endpoint.format(urllib.parse.quote_plus(code))
+        tryapl_link = RUN_ENDPOINT.format(urllib.parse.quote_plus(code))
         code_result = produce_code_result(result_lines)
-        reply = tryapl_link + ("\n\n" if code_result else "") + code_result
+        reply = REPLY_TEMPLATE.format(tryapl_link, code_result).strip()
+
+        # Build the image attachment.
         image = generate_image(session_lines)
         image.save("img.png")
         img_uploaded = api.media_upload("img.png")
-        print(reply)
+
+        # Upload the reply.
         api.update_status(
             reply,
             in_reply_to_status_id=tweet.id,
