@@ -12,9 +12,7 @@ The bot replies with the result and a direct link to [Try APL][tryapl] with your
 
 ## Example
 
-<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Run it online: <a href="https://t.co/78RZp3wI48">https://t.co/78RZp3wI48</a> <a href="https://t.co/qECsY3cw13">pic.twitter.com/qECsY3cw13</a></p>&mdash; Dyalog APL Bot (@dyalogaplbot) <a href="https://twitter.com/dyalogaplbot/status/1407274358238744578?ref_src=twsrc%5Etfw">June 22, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script> 
-
-Find the original thread [here](https://twitter.com/dyalogaplbot/status/1407272520919797762).
+See [here](https://twitter.com/dyalogaplbot/status/1407272520919797762) for an example.
 
 
 [dyalogaplbot]: https://twitter.com/dyalogaplbot
