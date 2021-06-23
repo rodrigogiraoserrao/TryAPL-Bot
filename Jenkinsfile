@@ -6,8 +6,8 @@ pipeline {
                 label 'Docker'
             }
             steps {
-                sh 'docker build -t rojergs/dyalog-apl-twitter-bot .'
                 withDockerRegistry(credentialsId: '83e1d5d9-7b68-43f0-99cc-950fdcbbaf7b', url: 'https://index.docker.io/v1/') {
+                    sh 'docker build -t rojergs/dyalog-apl-twitter-bot .'
                     sh 'docker push rojergs/dyalog-apl-twitter-bot'
                 }
             }
