@@ -22,7 +22,7 @@ handler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 if None in [CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET]:
     logger.error("Could not load API keys -- exiting.")
@@ -192,7 +192,10 @@ while True:
         continue
     called = time.time()
 
-    logger.debug(f"Processing {len(to_process)} tweet(s).")
+    if to_process:
+        logger.info(f"Processing {len(to_process)} tweet(s).")
+    else:
+        logger.debug("Processing 0 tweet(s).")
 
     for tweet in to_process:
         if skip_tweet(tweet):
@@ -246,5 +249,5 @@ while True:
             media_ids=[img_uploaded.media_id_string],
         )
         most_recent_processed = tweet.id
-        logger.debug(f"Finished processing tweet {tweet.id}.")
+        logger.info(f"Finished processing tweet {tweet.id}.")
         save_most_recent_processed(most_recent_processed)
