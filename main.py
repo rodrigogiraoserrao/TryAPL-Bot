@@ -12,7 +12,7 @@ ACCESS_TOKEN = os.environ.get("BOT_ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.environ.get("BOT_ACCESS_TOKEN_SECRET")
 
 TRYAPL_ENDPOINT = "https://tryapl.org/Exec"
-REPLY_TEMPLATE = "Run it online: {}\n\n{}"
+REPLY_TEMPLATE = "{}\n\nRun it online: {}"
 RUN_ENDPOINT = "https://tryapl.org/?q={}&run"
 
 WAIT_BETWEEN_REQUESTS = 12
@@ -234,7 +234,7 @@ while True:
         code = " ⋄ ".join(code_matches)
         tryapl_link = RUN_ENDPOINT.format(urllib.parse.quote_plus(code))
         code_result = produce_code_result(result_lines)
-        reply = REPLY_TEMPLATE.format(tryapl_link, code_result).strip()
+        reply = REPLY_TEMPLATE.format(code_result, tryapl_link).strip()
 
         # Build the image attachment.
         image = generate_image(session_lines)
