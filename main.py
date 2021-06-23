@@ -210,6 +210,7 @@ while True:
                 auto_populate_reply_metadata=True,
             )
             most_recent_processed = tweet.id
+            logger.debug(f"Skipping no-code tweet {tweet.id}.")
             save_most_recent_processed(most_recent_processed)
             continue
 
@@ -245,4 +246,5 @@ while True:
             media_ids=[img_uploaded.media_id_string],
         )
         most_recent_processed = tweet.id
+        logger.debug(f"Finished processing tweet {tweet.id}.")
         save_most_recent_processed(most_recent_processed)
