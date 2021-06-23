@@ -61,14 +61,14 @@ def parse_tweet(s):
         if not in_code and char == "`":
             in_code = True
             match = ""
+        elif in_code and char == "\n":
+            in_string = False
+            matches.append(match)
+            match = ""
         elif in_code and not in_string:
             if char == "`":
                 in_code = False
                 matches.append(match)
-            elif char == "\n":
-                in_string = False
-                matches.append(match)
-                match = ""
             else:
                 match += char
                 in_string = char == "'"
