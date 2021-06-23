@@ -1,0 +1,11 @@
+version: "2"
+services:
+    TwitterBot:
+        image: rojergs/dyalog-apl-twitter-bot
+        environment:
+            BOT_CONSUMER_KEY: ${BOT_CONSUMER_KEY}
+            BOT_CONSUMER_SECRET: ${BOT_CONSUMER_SECRET}
+            BOT_ACCESS_TOKEN: ${BOT_ACCESS_TOKEN}
+            BOT_ACCESS_TOKEN_SECRET: ${BOT_ACCESS_TOKEN_SECRET}
+        labels:
+            io.rancher.container.pull_image: always
