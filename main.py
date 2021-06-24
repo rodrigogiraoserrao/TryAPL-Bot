@@ -138,6 +138,13 @@ def build_reply_text(code_matches, result_lines):
     Otherwise, do not attempt to send multiline output in the text.
     """
 
+    if not code_matches:
+        return (
+            "I see you mentioned me, but I found no code to evaluate.\n"
+            "\n"
+            "Did you forget to put backticks around your code?"
+        )
+
     REPLY_TEMPLATE = "{result}\n\nRun it online: {link}"
     # Produce the link to TryAPL.
     code = " ⋄ ".join(code_matches)
@@ -227,20 +234,6 @@ while True:
 
         # Look for the code expressions to be ran.
         code_matches = parse_tweet(tweet.full_text)
-        if not code_matches:
-            api.update_status(
-                (
-                    "I see you mentioned me, but I found no code to evaluate.\n"
-                    "\n"
-                    "Did you forget to put backticks around your code?"
-                ),
-                in_reply_to_status_id=tweet.id,
-                auto_populate_reply_metadata=True,
-            )
-            most_recent_processed = tweet.id
-            logger.debug(f"Skipping no-code tweet {tweet.id}.")
-            save_most_recent_processed(most_recent_processed)
-            continue
 
         # Build the mock interpreter session from the parsed code.
         result_lines = []
@@ -272,17 +265,20 @@ while True:
 
         # Build the image attachment.
         session_transcript = build_transcript(code_matches, result_lines)
-        image = generate_image(session_transcript)
-        image.save("img.png")
-        img_uploaded = api.media_upload("img.png")
+        if session_transcript:
+            image = generate_image(session_transcript)
+            image.save("img.png")
+            media_ids = [api.media_upload("img.png").media_id_string]
+        else:
+            media_ids = []
 
         # Upload the reply.
         api.update_status(
             reply,
             in_reply_to_status_id=tweet.id,
             auto_populate_reply_metadata=True,
-            media_ids=[img_uploaded.media_id_string],
+            media_ids=media_ids,
         )
+        logger.info(f"Processed tweet {tweet.id} with {len(code_matches)} eval(s).")
+        save_most_recent_processed(tweet.id)
         most_recent_processed = tweet.id
-        logger.info(f"Finished processing tweet {tweet.id}.")
-        save_most_recent_processed(most_recent_processed)
