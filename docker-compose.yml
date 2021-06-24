@@ -1,7 +1,7 @@
 version: "2"
 services:
     TwitterBot:
-        image: rojergs/dyalog-apl-twitter-bot
+        image: rojergs/tryapl-bot
         environment:
             BOT_CONSUMER_KEY: ${BOT_CONSUMER_KEY}
             BOT_CONSUMER_SECRET: ${BOT_CONSUMER_SECRET}

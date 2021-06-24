@@ -1,7 +1,8 @@
-# Dyalog APL Twitter Bot
+# TryAPL Bot
 
 [Twitter bot][dyalogaplbot] that automatically evaluates (Dyalog) APL expressions and replies with the results.
 
+Uses [TryAPL][tryapl] to fetch the results.
 
 ## Usage
 
