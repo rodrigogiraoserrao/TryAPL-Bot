@@ -210,6 +210,7 @@ while True:
     time.sleep(
         max(0, WAIT_BETWEEN_REQUESTS - (time.time() - called) + 0.01)
     )
+    called = time.time()
     try:
         to_process = api.mentions_timeline(most_recent_processed, tweet_mode="extended")[::-1]
     except tweepy.error.RateLimitError:
@@ -218,7 +219,6 @@ while True:
     except tweepy.error.TweepError:
         logger.exception("Failed to load bot mentions.")
         continue
-    called = time.time()
 
     if to_process:
         logger.info(f"Processing {len(to_process)} tweet(s).")
