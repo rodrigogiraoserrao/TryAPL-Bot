@@ -172,17 +172,18 @@ def build_transcript(inputs, result_lines):
         for inp, res in zip(inputs, result_lines)
     )
 
-def generate_image(result_lines):
+def generate_image(transcript):
     """Generate an image with the code results.
 
     cf. https://stackoverflow.com/q/5414639/2828287.
     """
 
-    if len(result_lines) > 100:
-        result_lines = result_lines[:98] + ["∙∙∙"] + result_lines[99]
-    result_lines = [
+    lines = transcript.split("\n")
+    if len(lines) > 100:
+        lines = lines[:98] + ["∙∙∙"] + lines[99]
+    lines = [
         line if len(line) <= 100 else line[:99] + "∙"
-        for line in result_lines
+        for line in lines
     ]
     fontsize = 18
     px_per_char, px_per_line = 11, 22       # Figured these out through experimenting by hand.
@@ -196,7 +197,7 @@ def generate_image(result_lines):
     )
     draw = PIL.ImageDraw.Draw(image)
     font = PIL.ImageFont.truetype("resources/Apl385.ttf", fontsize)
-    draw.text((0, 0), "\n".join(result_lines), (0, 0, 0), font=font)
+    draw.text((0, 0), "\n".join(lines), (0, 0, 0), font=font)
     return image
 
 most_recent_processed = load_most_recent_processed()
@@ -259,6 +260,7 @@ while True:
             len(result_lines) == 1 and len(result_lines[0]) == 1
         ):
             reply = result_lines[0][0]
+            result_lines = []   # Empty this so that no image is generated.
         # Otherwise, just build the text reply.
         else:
             reply = build_reply_text(code_matches, result_lines)
