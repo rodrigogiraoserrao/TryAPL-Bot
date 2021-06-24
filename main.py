@@ -12,8 +12,7 @@ ACCESS_TOKEN = os.environ.get("BOT_ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.environ.get("BOT_ACCESS_TOKEN_SECRET")
 
 TRYAPL_ENDPOINT = "https://tryapl.org/Exec"
-REPLY_TEMPLATE = "{}\n\nRun it online: {}"
-RUN_ENDPOINT = "https://tryapl.org/?q={}&run"
+SPECIAL_RESULT_TAG = chr(8) # Character used to tag special results from the TryAPL endpoint.
 
 WAIT_BETWEEN_REQUESTS = 12
 
@@ -115,34 +114,56 @@ def char_weight(char):
     else:
         return 2
 
-def produce_code_result(result_lines):
-    """Trims the code result to fit a tweet.
+def trim_to_twitter_length(string, max_length):
+    """Trim a string so that it has, at most, the given Twitter length.
 
-    Produces nothing for multi-line output and makes sure the line
-    is short enough for single-line output.
-    Also deals with the multi-weight of non-standard characters.
+    This is not the same as doing string[:max_length] because Twitter assigns
+    different weights to different characters.
     """
 
-    # If the result is single line, make sure the line is as long as possible.
-    # If the result is multi-line, make sure lines don't get too long.
-    if len(result_lines) != 1:
-        return ""
-    else:
-        code_result = result_lines[0]
-    weights = [char_weight(char) for char in code_result]
-    acc = itertools.accumulate(weights)
-    # According to https://help.twitter.com/en/using-twitter/how-to-tweet-a-link,
-    # URLs take up 23 characters and subtract the length of the reply template.
-    max_weight = 280 - 23 - len(REPLY_TEMPLATE)
+    acc = itertools.accumulate(char_weight(char) for char in string)
     trimmed = ""
-    for char, weight in zip(code_result, acc):
-        if weight > max_weight:
+    for char, weight in zip(string, acc):
+        if weight > max_length:
             break
         trimmed += char
-    if len(trimmed) < len(code_result):
-        ellipsis = "..."
-        trimmed = trimmed[:-len(ellipsis)] + ellipsis
     return trimmed
+
+def build_reply_text(code_matches, result_lines):
+    """Builds the textual part of the reply to a tweet.
+    
+    Includes a direct link to TryAPL with the user code.
+    If all results boil down to a single line,
+    trim it to fit the screen and include it.
+    Otherwise, do not attempt to send multiline output in the text.
+    """
+
+    REPLY_TEMPLATE = "{result}\n\nRun it online: {link}"
+    # Produce the link to TryAPL.
+    code = " ⋄ ".join(code_matches)
+    base_reply = f"{}\n\nRun it online: {}"
+    tryapl_link = f"https://tryapl.org/?q={urllib.parse.quote_plus(code)}&run"
+
+    results = list(itertools.chain(*result_lines))  # Flatten the list.
+    # Do nothing with multiline output.
+    if len(results) != 1:
+        return base_reply.format("", tryapl_link).strip()
+
+    # According to https://help.twitter.com/en/using-twitter/how-to-tweet-a-link,
+    # URLs take up 23 characters.
+    # We also subtract the length of the reply template.
+    result = trim_to_twitter_length(results[0], 280 - 23 - len(base_reply))
+    # If we had to trim something, make sure it is clear in the final result.
+    if len(result) < len(results[0]):
+        result = result[:-len("...")] + "..."
+    return base_reply.format(result, tryapl_link)
+
+def build_transcript(inputs, result_lines):
+    """Build a session transcript from a series of inputs and results."""
+    return "\n".join(
+        " "*6 + inp + ("\n" if res else "") + "\n".join(res)
+        for inp, res in zip(inputs, result_lines)
+    )
 
 def generate_image(result_lines):
     """Generate an image with the code results.
@@ -233,15 +254,13 @@ while True:
             session_lines.append(" "*6 + match)
             session_lines.extend(res)
             result_lines.extend(res)
+            result_lines.append(res)
 
-        # Build the text reply.
-        code = " ⋄ ".join(code_matches)
-        tryapl_link = RUN_ENDPOINT.format(urllib.parse.quote_plus(code))
-        code_result = produce_code_result(result_lines)
-        reply = REPLY_TEMPLATE.format(code_result, tryapl_link).strip()
+        reply = build_reply_text(code_matches, result_lines)
 
         # Build the image attachment.
-        image = generate_image(session_lines)
+        session_transcript = build_transcript(code_matches, result_lines)
+        image = generate_image(session_transcript)
         image.save("img.png")
         img_uploaded = api.media_upload("img.png")
 
