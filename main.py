@@ -208,7 +208,11 @@ while True:
         code_matches = parse_tweet(tweet.full_text)
         if not code_matches:
             api.update_status(
-                "I see you mentioned me, but I found no code to evaluate.",
+                (
+                    "I see you mentioned me, but I found no code to evaluate.\n"
+                    "\n"
+                    "Did you forget to put backticks around your code?"
+                ),
                 in_reply_to_status_id=tweet.id,
                 auto_populate_reply_metadata=True,
             )
