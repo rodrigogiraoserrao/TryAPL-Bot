@@ -247,7 +247,7 @@ while True:
             # Look for tagged result lines.
             for idx, line in enumerate(res):
                 if line.startswith(SPECIAL_RESULT_TAG):
-                    tag, result = line.split(SPECIAL_RESULT_TAG)
+                    _, tag, result = line.split(SPECIAL_RESULT_TAG)
                     tags.append(tag)
                     res[idx] = result
             result_lines.append(res)
