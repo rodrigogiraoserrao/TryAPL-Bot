@@ -243,20 +243,32 @@ while True:
             continue
 
         # Build the mock interpreter session from the parsed code.
-        session_lines = []
         result_lines = []
+        tags = []
         ws_state, ws_id, ws_hash = "", 0, ""
         for match in code_matches:
             ws_state, ws_id, ws_hash, res = requests.post(
                 TRYAPL_ENDPOINT,
                 json=[ws_state, ws_id, ws_hash, match],
             ).json()
-            session_lines.append(" "*6 + match)
-            session_lines.extend(res)
-            result_lines.extend(res)
+            # Look for tagged result lines.
+            for idx, line in enumerate(res):
+                if line.startswith(SPECIAL_RESULT_TAG):
+                    tag, result = line.split(SPECIAL_RESULT_TAG)
+                    tags.append(tag)
+                    res[idx] = result
             result_lines.append(res)
 
-        reply = build_reply_text(code_matches, result_lines)
+        # Handle the special case of a single ]help command differently,
+        # by only replying with the URL response of the help command.
+        if (
+            len(tags) == 1 and tags[0] == "help" and
+            len(result_lines) == 1 and len(result_lines[0]) == 1
+        ):
+            reply = result_lines[0][0]
+        # Otherwise, just build the text reply.
+        else:
+            reply = build_reply_text(code_matches, result_lines)
 
         # Build the image attachment.
         session_transcript = build_transcript(code_matches, result_lines)
