@@ -148,7 +148,7 @@ def build_reply_text(code_matches, result_lines):
     REPLY_TEMPLATE = "{result}\n\nRun it online: {link}"
     # Produce the link to TryAPL.
     code = " ⋄ ".join(code_matches)
-    base_reply = f"{}\n\nRun it online: {}"
+    base_reply = "{}\n\nRun it online: {}"
     tryapl_link = f"https://tryapl.org/?q={urllib.parse.quote_plus(code)}&run"
 
     results = list(itertools.chain(*result_lines))  # Flatten the list.
