@@ -187,9 +187,9 @@ def generate_image(transcript):
     ]
     fontsize = 18
     px_per_char, px_per_line = 11, 22       # Figured these out through experimenting by hand.
-    longest_line = max(len(line) for line in result_lines)
+    longest_line = max(len(line) for line in lines)
     img_width = max(longest_line*px_per_char, 400)
-    img_height = max(len(result_lines)*px_per_line, 300)
+    img_height = max(len(lines)*px_per_line, 300)
     image = PIL.Image.new(
         "RGBA",
         (img_width, img_height),
